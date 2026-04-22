@@ -1,0 +1,131 @@
+:root {
+  font-family: Inter, system-ui, sans-serif;
+  color: #f4f7fb;
+  background: #0d1117;
+}
+
+* { box-sizing: border-box; }
+html, body, #root {
+  min-height: 100%;
+}
+body {
+  margin: 0;
+  background: #0d1117;
+  color: #f4f7fb;
+}
+button, input, select {
+  font: inherit;
+  border-radius: 10px;
+  border: 1px solid #2a3441;
+  padding: 0.7rem 0.9rem;
+}
+button {
+  background: #35c759;
+  color: #04110a;
+  font-weight: 700;
+  cursor: pointer;
+}
+button.secondary {
+  background: #1f2937;
+  color: #f4f7fb;
+}
+input, select {
+  background: #111827;
+  color: #f4f7fb;
+}
+.app-shell {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+.hero, .card, .player, .alert {
+  background: #111827;
+  border: 1px solid #223042;
+  border-radius: 18px;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.25);
+}
+.hero {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+.hero h1 {
+  margin: 0 0 0.4rem;
+  font-size: 2rem;
+}
+.note {
+  max-width: 360px;
+  color: #c7d2e0;
+  font-size: 0.95rem;
+}
+.alert {
+  padding: 1rem 1.25rem;
+  margin-bottom: 1rem;
+}
+.grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 1.5rem;
+}
+.card {
+  padding: 1.25rem;
+}
+.search-row, .playlist-form {
+  display: flex;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+.song-list {
+  display: grid;
+  gap: 0.85rem;
+}
+.song-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  background: #0d1520;
+  border: 1px solid #223042;
+  border-radius: 14px;
+  padding: 1rem;
+}
+.song-item span {
+  display: block;
+  color: #b6c2d1;
+  margin-top: 0.25rem;
+}
+.song-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.playlist-select {
+  width: 100%;
+  margin-bottom: 1rem;
+}
+.playlist-box {
+  background: #0d1520;
+  border: 1px solid #223042;
+  border-radius: 14px;
+  padding: 1rem;
+  min-height: 220px;
+}
+.player {
+  margin-top: 1.5rem;
+  padding: 1rem 1.25rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.player-controls {
+  display: flex;
+  gap: 0.6rem;
+}
+@media (max-width: 900px) {
+  .grid { grid-template-columns: 1fr; }
+  .hero, .player { flex-direction: column; align-items: stretch; }
+}
