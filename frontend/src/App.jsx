@@ -569,7 +569,7 @@ export default function App() {
         <audio
           ref={audioRef}
           controls
-          src={currentSong ? getStreamUrl(currentSong.id) : ''}
+          src={currentSong ? getStreamUrl(currentSong) : ''}
           onPlay={() => setIsPlaying(true)}
           onPause={() => setIsPlaying(false)}
           onEnded={handleSongEnded}
@@ -585,7 +585,7 @@ export default function App() {
         <audio
           ref={nextAudioRef}
           preload="auto"
-          src={nextSong ? getStreamUrl(nextSong.id) : ''}
+          src={nextSong ? getStreamUrl(nextSong) : ''}
           style={{ display: 'none' }}
         />
       </footer>

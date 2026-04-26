@@ -29,28 +29,56 @@ impl AppState {
         let mut library = Library::default();
 
         let seed = vec![
-            Song::new(
-                "Caballero".into(),
-                "Alejandro Fernandez".into(),
-                "Ranchera".into(),
-                228,
-                "data/songs/Alejandro_Fernandez_Caballero.mp3".into(),
-            ),
-            Song::new(
-                "Río de Cristal".into(),
-                "Monteverde".into(),
-                "Folk".into(),
-                189,
-                "data/songs/rio-de-cristal.mp3".into(),
-            ),
-            Song::new(
-                "Voltaje".into(),
-                "Código Binario".into(),
-                "Rock".into(),
-                242,
-                "data/songs/voltaje.mp3".into(),
-            ),
-        ];
+                Song::new(
+                    "Caballero".into(),
+                    "Alejandro Fernández".into(),
+                    "Ranchera".into(),
+                    228,
+                    "data/songs/Alejandro_Fernandez_Caballero.mp3".into(),
+                ),
+                Song::new(
+                    "Como quien pierde una estrella".into(),
+                    "Alejandro Fernández".into(),
+                    "Ranchera".into(),
+                    212,
+                    "data/songs/Alejandro_Fernandez_ComoQuienPierdeUnaEstrella.mp3".into(),
+                ),
+                Song::new(
+                    "Eso y más".into(),
+                    "Alejandro Fernández".into(),
+                    "Ranchera".into(),
+                    205,
+                    "data/songs/Alejandro_Fernandez_EsoYMas.mp3".into(),
+                ),
+                Song::new(
+                    "Me hace tanto bien".into(),
+                    "Alejandro Fernández".into(),
+                    "Ranchera".into(),
+                    210,
+                    "data/songs/Alejandro_Fernandez_MeHaceTantoBien.mp3".into(),
+                ),
+                Song::new(
+                    "Dracukeo".into(),
+                    "Artista desconocido".into(),
+                    "Urbano".into(),
+                    180,
+                    "data/songs/Dracukeo.mp3".into(),
+                ),
+                Song::new(
+                    "Por tu maldito amor".into(),
+                    "Vicente Fernández".into(),
+                    "Ranchera".into(),
+                    240,
+                    "data/songs/Vicente_Fernandez_PorTuMalditoAmor.mp3".into(),
+                ),
+                Song::new(
+                    "Un millón de primaveras".into(),
+                    "Vicente Fernández".into(),
+                    "Ranchera".into(),
+                    235,
+                    "data/songs/Vicente_Fernandez_UnMillondePrimaveras.mp3".into(),
+                ),
+            ];
 
         seed.into_iter().for_each(|song| {
             library.songs.insert(song.id, song);

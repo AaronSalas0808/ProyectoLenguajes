@@ -17,8 +17,13 @@ async function parseResponse(response) {
 // El elemento <audio> del navegador pedirá automáticamente los rangos
 // de bytes que necesite conforme avanza la reproducción.
 
-export function getStreamUrl(songId) {
-  return `${API_BASE}/stream/${songId}`;
+export function getStreamUrl(song) {
+  const parts = (song.file_path || '').split('/');
+  const filename = parts[parts.length - 1];
+
+  return filename
+    ? `http://127.0.0.1:3000/audio/${encodeURIComponent(filename)}`
+    : '';
 }
 
 // Mantener compatibilidad con código viejo si se necesita la ruta directa
