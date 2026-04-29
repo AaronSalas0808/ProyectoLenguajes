@@ -433,3 +433,34 @@ audio {
     grid-template-columns: 1fr;
   }
 }
+
+.alert-success {
+  border-color: rgba(74, 222, 128, 0.35);
+  background: rgba(20, 83, 45, 0.35);
+}
+
+.add-song-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.7rem;
+  margin-bottom: 1rem;
+  padding: 1rem;
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  border-radius: 22px;
+  background: rgba(2, 6, 23, 0.35);
+}
+
+.add-song-form h3 {
+  grid-column: 1 / -1;
+  margin: 0 0 0.3rem;
+}
+
+.add-song-form button {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 680px) {
+  .add-song-form {
+    grid-template-columns: 1fr;
+  }
+}

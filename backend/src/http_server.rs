@@ -55,6 +55,15 @@ struct SongsQuery {
 }
 
 #[derive(Debug, Deserialize)]
+struct CreateSongBody {
+    title: String,
+    artist: String,
+    genre: String,
+    duration_seconds: u32,
+    file_path: String,
+}
+
+#[derive(Debug, Deserialize)]
 struct CreatePlaylistBody {
     name: String,
 }
@@ -93,8 +102,8 @@ struct QueueStatus {
 pub async fn run(addr: &str, state: AppState) -> Result<(), Box<dyn std::error::Error>> {
     let app = Router::new()
         // Canciones
-        .route("/api/songs", get(list_or_search_songs))
-        // Streaming de audio (simula descarga desde nube con buffer por chunks)
+        .route("/api/songs", get(list_or_search_songs).post(create_song))
+        // Streaming de audio
         .route("/api/stream/:song_id", get(stream_song))
         // Cola de reproducción
         .route("/api/queue", get(get_queue).post(enqueue_song).delete(clear_queue))
@@ -105,10 +114,10 @@ pub async fn run(addr: &str, state: AppState) -> Result<(), Box<dyn std::error::
         // Playlists
         .route("/api/playlists", get(list_playlists).post(create_playlist))
         .route("/api/playlists/:playlist_id/songs", post(add_song_to_playlist))
-        // Reproducción (registro en servidor)
+        // Reproducción
         .route("/api/playback/start", post(start_playback))
         .route("/api/playback/stop", post(stop_playback))
-        // Archivos de audio directos (fallback)
+        // Archivos de audio directos
         .nest_service("/audio", ServeDir::new("data/songs"))
         .layer(CorsLayer::permissive())
         .with_state(state);
@@ -157,20 +166,66 @@ async fn list_or_search_songs(
         .into_response()
 }
 
-// ── Handler: Streaming por chunks (simula nube) ───────────────────────────────
-//
-// El navegador envía un header "Range: bytes=START-END" automáticamente
-// conforme el <audio> necesita más datos. Este endpoint responde con el
-// fragmento solicitado (HTTP 206 Partial Content), simulando cómo una
-// plataforma de streaming sirve audio desde la nube sin enviar el archivo
-// completo de una vez.
+async fn create_song(
+    State(state): State<AppState>,
+    Json(body): Json<CreateSongBody>,
+) -> impl IntoResponse {
+    if body.title.trim().is_empty()
+        || body.artist.trim().is_empty()
+        || body.genre.trim().is_empty()
+        || body.file_path.trim().is_empty()
+    {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(ApiResponse {
+                success: false,
+                message: "Todos los campos son obligatorios".into(),
+                data: serde_json::json!(null),
+            }),
+        )
+            .into_response();
+    }
+
+    if body.duration_seconds == 0 {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(ApiResponse {
+                success: false,
+                message: "La duración debe ser mayor a 0 segundos".into(),
+                data: serde_json::json!(null),
+            }),
+        )
+            .into_response();
+    }
+
+    let song = Song::new(
+        body.title.trim().to_string(),
+        body.artist.trim().to_string(),
+        body.genre.trim().to_string(),
+        body.duration_seconds,
+        body.file_path.trim().to_string(),
+    );
+
+    let song = state.add_song(song).await;
+
+    (
+        StatusCode::CREATED,
+        Json(ApiResponse {
+            success: true,
+            message: "Canción agregada correctamente".into(),
+            data: song,
+        }),
+    )
+        .into_response()
+}
+
+// ── Handler: Streaming por chunks ─────────────────────────────────────────────
 
 async fn stream_song(
     State(state): State<AppState>,
     AxumPath(song_id): AxumPath<Uuid>,
     headers: HeaderMap,
 ) -> Response {
-    // 1. Buscar canción
     let song = match state.get_song(song_id).await {
         Some(s) => s,
         None => {
@@ -181,7 +236,6 @@ async fn stream_song(
 
     let file_path = &song.file_path;
 
-    // 2. Obtener tamaño del archivo
     let metadata = match tokio::fs::metadata(file_path).await {
         Ok(m) => m,
         Err(_) => {
@@ -198,12 +252,9 @@ async fn stream_song(
         return (StatusCode::NO_CONTENT, "Archivo vacío").into_response();
     }
 
-    // 3. Parsear el header Range enviado por el navegador
-    //    Formato: "bytes=0-" o "bytes=0-1023" o "bytes=512-1023"
     let (start, end) = parse_range_header(&headers, file_size);
     let content_length = end - start + 1;
 
-    // 4. Abrir el archivo y moverse al offset correcto (seek)
     let mut file = match tokio::fs::File::open(file_path).await {
         Ok(f) => f,
         Err(e) => {
@@ -223,7 +274,6 @@ async fn stream_song(
             .into_response();
     }
 
-    // 5. Leer exactamente los bytes solicitados (el "chunk" del buffer)
     let mut buffer = vec![0u8; content_length as usize];
     if let Err(e) = file.read_exact(&mut buffer).await {
         return (
@@ -233,10 +283,8 @@ async fn stream_song(
             .into_response();
     }
 
-    // 6. Detectar tipo MIME por extensión
     let mime = detect_mime(file_path);
 
-    // 7. Responder con 206 Partial Content si es rango parcial, 200 si es todo
     let status = if start == 0 && end == file_size - 1 {
         StatusCode::OK
     } else {
@@ -252,18 +300,14 @@ async fn stream_song(
             format!("bytes {start}-{end}/{file_size}"),
         )
         .header("Accept-Ranges", "bytes")
-        // Permite que el frontend acceda desde cualquier origen
         .header("Access-Control-Allow-Origin", "*")
         .header("Access-Control-Expose-Headers", "Content-Range, Accept-Ranges")
         .body(axum::body::Body::from(buffer))
         .unwrap_or_else(|_| StatusCode::INTERNAL_SERVER_ERROR.into_response())
 }
 
-/// Parsea el header Range y devuelve (start, end) en bytes.
-/// Si el rango es abierto ("bytes=0-"), limita el chunk a 512 KB
-/// para simular el buffer progresivo de un servicio de streaming.
 fn parse_range_header(headers: &HeaderMap, file_size: u64) -> (u64, u64) {
-    const CHUNK_SIZE: u64 = 512 * 1024; // 512 KB por chunk
+    const CHUNK_SIZE: u64 = 512 * 1024;
 
     let range_str = headers
         .get("range")
@@ -276,7 +320,6 @@ fn parse_range_header(headers: &HeaderMap, file_size: u64) -> (u64, u64) {
             let start = parts[0].parse::<u64>().unwrap_or(0);
 
             let end = if parts[1].is_empty() {
-                // Rango abierto → servir hasta CHUNK_SIZE bytes
                 (start + CHUNK_SIZE - 1).min(file_size - 1)
             } else {
                 parts[1].parse::<u64>().unwrap_or(file_size - 1).min(file_size - 1)
@@ -286,7 +329,6 @@ fn parse_range_header(headers: &HeaderMap, file_size: u64) -> (u64, u64) {
         }
     }
 
-    // Sin header Range → servir primer chunk
     (0, CHUNK_SIZE.min(file_size) - 1)
 }
 
@@ -310,7 +352,6 @@ fn detect_mime(path: &str) -> &'static str {
 
 // ── Handlers: Cola de reproducción ───────────────────────────────────────────
 
-/// GET /api/queue — devuelve las canciones en cola en orden
 async fn get_queue(State(state): State<AppState>) -> impl IntoResponse {
     let queue = state.get_queue().await;
     let len = queue.len();
@@ -324,7 +365,6 @@ async fn get_queue(State(state): State<AppState>) -> impl IntoResponse {
     })
 }
 
-/// POST /api/queue — agrega una canción al final de la cola
 async fn enqueue_song(
     State(state): State<AppState>,
     Json(body): Json<EnqueueBody>,
@@ -361,7 +401,6 @@ async fn enqueue_song(
     }
 }
 
-/// POST /api/queue/next — saca la próxima canción de la cola y la retorna
 async fn next_in_queue(State(state): State<AppState>) -> impl IntoResponse {
     match state.dequeue().await {
         Some(song) => (
@@ -385,7 +424,6 @@ async fn next_in_queue(State(state): State<AppState>) -> impl IntoResponse {
     }
 }
 
-/// DELETE /api/queue/:song_id — elimina una canción específica de la cola
 async fn remove_from_queue(
     State(state): State<AppState>,
     AxumPath(song_id): AxumPath<Uuid>,
@@ -403,7 +441,6 @@ async fn remove_from_queue(
     })
 }
 
-/// DELETE /api/queue — vacía toda la cola
 async fn clear_queue(State(state): State<AppState>) -> impl IntoResponse {
     state.clear_queue().await;
     Json(ApiResponse {
@@ -418,7 +455,6 @@ async fn clear_queue(State(state): State<AppState>) -> impl IntoResponse {
 
 // ── Handlers: Historial ───────────────────────────────────────────────────────
 
-/// GET /api/history — devuelve historial (más reciente primero)
 async fn get_history(State(state): State<AppState>) -> impl IntoResponse {
     let history = state.get_history().await;
     let len = history.len();
@@ -429,7 +465,6 @@ async fn get_history(State(state): State<AppState>) -> impl IntoResponse {
     })
 }
 
-/// DELETE /api/history — limpia el historial
 async fn clear_history(State(state): State<AppState>) -> impl IntoResponse {
     state.clear_history().await;
     Json(ApiResponse {

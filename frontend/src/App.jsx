@@ -1,6 +1,7 @@
 import React from 'react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
+  addSong,
   addSongToPlaylist,
   clearHistory,
   clearQueue,
@@ -20,6 +21,7 @@ import {
 import Header from './components/Header';
 import Alert from './components/Alert';
 import SearchBar from './components/SearchBar';
+import AddSongForm from './components/AddSongForm';
 import SongList from './components/SongList';
 import SidePanel from './components/SidePanel';
 import Player from './components/Player';
@@ -33,6 +35,7 @@ export default function App() {
   const [selectedPlaylist, setSelectedPlaylist] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
 
   const [currentSong, setCurrentSong] = useState(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -52,6 +55,7 @@ export default function App() {
     try {
       setLoading(true);
       setError('');
+      setSuccess('');
 
       const [songData, playlistData, queueData, historyData] = await Promise.all([
         listSongs(),
@@ -73,9 +77,25 @@ export default function App() {
     }
   }
 
+  async function handleAddSong(songData) {
+    try {
+      setError('');
+      setSuccess('');
+
+      await addSong(songData);
+      const updatedSongs = await listSongs();
+
+      setSongs(updatedSongs);
+      setSuccess('Canción agregada correctamente.');
+    } catch (err) {
+      setError(`No se pudo agregar la canción: ${err.message}`);
+    }
+  }
+
   async function handleSearch() {
     try {
       setError('');
+      setSuccess('');
 
       const results = query.trim()
         ? await searchSongs(criterion, query)
@@ -90,6 +110,7 @@ export default function App() {
   async function handlePlay(song) {
     try {
       setError('');
+      setSuccess('');
 
       if (currentSong && currentSong.id !== song.id) {
         await stopPlayback(currentSong.id).catch(() => null);
@@ -113,6 +134,8 @@ export default function App() {
 
     try {
       setError('');
+      setSuccess('');
+
       await stopPlayback(currentSong.id);
       audioRef.current?.pause();
       setIsPlaying(false);
@@ -161,6 +184,8 @@ export default function App() {
   async function handleEnqueue(song) {
     try {
       setError('');
+      setSuccess('');
+
       const result = await enqueueSong(song.id);
       setQueue(result.queue ?? []);
       setSideTab('queue');
@@ -172,6 +197,8 @@ export default function App() {
   async function handleRemoveFromQueue(songId) {
     try {
       setError('');
+      setSuccess('');
+
       const result = await removeFromQueue(songId);
       setQueue(result.queue ?? []);
     } catch (err) {
@@ -182,6 +209,8 @@ export default function App() {
   async function handleClearQueue() {
     try {
       setError('');
+      setSuccess('');
+
       await clearQueue();
       setQueue([]);
     } catch (err) {
@@ -209,6 +238,8 @@ export default function App() {
   async function handleClearHistory() {
     try {
       setError('');
+      setSuccess('');
+
       await clearHistory();
       setHistory([]);
     } catch (err) {
@@ -223,6 +254,7 @@ export default function App() {
 
     try {
       setError('');
+      setSuccess('');
 
       const playlist = await createPlaylist(newPlaylist.trim());
       const updated = await listPlaylists();
@@ -230,6 +262,7 @@ export default function App() {
       setPlaylists(updated);
       setSelectedPlaylist(playlist.id);
       setNewPlaylist('');
+      setSuccess('Playlist creada correctamente.');
     } catch (err) {
       setError(`No se pudo crear la playlist: ${err.message}`);
     }
@@ -243,11 +276,13 @@ export default function App() {
 
     try {
       setError('');
+      setSuccess('');
 
       await addSongToPlaylist(selectedPlaylist, songId);
       const updated = await listPlaylists();
 
       setPlaylists(updated);
+      setSuccess('Canción agregada a la playlist.');
     } catch (err) {
       setError(`No se pudo agregar a la playlist: ${err.message}`);
     }
@@ -265,6 +300,7 @@ export default function App() {
       <Header />
 
       <Alert type="error">{error}</Alert>
+      <Alert type="success">{success}</Alert>
       {loading && <Alert type="info">Cargando datos del backend...</Alert>}
 
       <main className="grid">
@@ -285,6 +321,8 @@ export default function App() {
             onSearch={handleSearch}
             onReload={loadInitialData}
           />
+
+          <AddSongForm onAddSong={handleAddSong} />
 
           <SongList
             songs={songs}
